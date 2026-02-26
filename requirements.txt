@@ -1,0 +1,5 @@
+playwright>=1.41.0
+python-dotenv>=1.0.1
+click>=8.1.7
+pytest>=8.0.0
+pytest-playwright>=0.4.3
