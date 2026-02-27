@@ -25,6 +25,33 @@ class LottoScraper:
         self.context = None
         self.page = None
 
+    def _extract_numbers_from_report(self) -> tuple[int | None, list[list[int]]]:
+        """
+        구매 영수증(#report) 텍스트에서 회차 및 로또 번호를 최대한 추출합니다.
+        반환: (round_number_or_None, [[n1..n6], ...])
+        """
+        try:
+            report = self.page.locator("#report")
+            if not report.is_visible():
+                return None, []
+            text = report.inner_text()
+        except Exception:
+            return None, []
+
+        # 회차 추출 (예: "제 1123회")
+        round_no = None
+        m = re.search(r"(\d{3,4})\s*회", text)
+        if m:
+            try:
+                round_no = int(m.group(1))
+            except ValueError:
+                round_no = None
+
+        # 1~45 번호 추출
+        nums = [int(n) for n in re.findall(r"(?<!\d)(?:[1-9]|[1-3]\d|4[0-5])(?=\D)", text)]
+        groups = [nums[i:i+6] for i in range(0, len(nums), 6) if len(nums[i:i+6]) == 6]
+        return round_no, groups
+
     def __enter__(self):
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=self.headless)
@@ -158,11 +185,15 @@ class LottoScraper:
             
             if self.page.locator("#report").is_visible():
                 print("구매 성공 영수증 확인 완료!")
-                # 구매 회차 파싱 (임시로 현재 주차를 구하거나 0으로 세팅, 실 구현에서는 영수증 텍스트 파싱)
-                mock_round = 0 
+                round_no, groups = self._extract_numbers_from_report()
                 now = datetime.now()
-                for _ in range(amount):
-                    insert_purchase(round_number=mock_round, purchase_date=now, mode="자동", numbers="확인필요", cost=1000)
+                # 추출된 번호가 있으면 우선 저장, 부족하면 확인필요로 채움
+                for i in range(amount):
+                    if i < len(groups):
+                        nums = ",".join(map(str, sorted(groups[i])))
+                    else:
+                        nums = "확인필요"
+                    insert_purchase(round_number=round_no or 0, purchase_date=now, mode="자동", numbers=nums, cost=1000)
                 return True
             
             # 알럿 텍스트 체크 (잔액 부족 등)
@@ -172,10 +203,14 @@ class LottoScraper:
             
             if "구매가 완료되었습니다" in alert_text or "구매를 완료하였습니다" in alert_text:
                 print("알림창을 통한 구매 성공 확인 완료!")
-                mock_round = 0 
+                round_no, groups = self._extract_numbers_from_report()
                 now = datetime.now()
-                for _ in range(amount):
-                    insert_purchase(round_number=mock_round, purchase_date=now, mode="자동", numbers="확인필요", cost=1000)
+                for i in range(amount):
+                    if i < len(groups):
+                        nums = ",".join(map(str, sorted(groups[i])))
+                    else:
+                        nums = "확인필요"
+                    insert_purchase(round_number=round_no or 0, purchase_date=now, mode="자동", numbers=nums, cost=1000)
                 return True
                 
             print(f"구매 실패 알림: {alert_text}")
