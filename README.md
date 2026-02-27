@@ -30,6 +30,14 @@
 2. **Tesseract OCR 엔진 설치 (필수)**
    - 케이뱅크 가상 키보드 이미지 해독용. 환경변수까지 등록되어야 합니다.
    - 설치 방법은 [`docs/TESSERACT_GUIDE.md`](docs/TESSERACT_GUIDE.md) 문서를 참고해 주세요.
+   - **Windows 권장:** 설치 후 `.env`에 아래 추가
+     ```env
+     TESSERACT_PATH=C:\Program Files\Tesseract-OCR\tesseract.exe
+     ```
+   - Python OCR 모듈도 필요합니다:
+     ```bash
+     pip install pytesseract
+     ```
 3. **동행복권 계정 및 케이뱅크 간편결제 연동 상태**
    - 동행복권 홈페이지에서 케이뱅크 간편결제가 이미 등록되어 비밀번호 6자리만 누르면 충전이 가능한 상태여야 합니다.
 
@@ -78,6 +86,9 @@ CHARGE_PIN=123456
 DISCORD_WEBHOOK_URL=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+
+# (Windows 권장) Tesseract 경로 명시
+TESSERACT_PATH=C:\Program Files\Tesseract-OCR\tesseract.exe
 ```
 
 ---
@@ -131,6 +142,9 @@ python main.py check-pending
 
 # (현실 직시) 나의 로또 생애 누적 통계를 출력합니다.
 python main.py stats
+
+# (추첨 전) 미확인 티켓과 번호를 확인합니다.
+python main.py pending
 ```
 **`check-pending` 결과물 예시:** 
 *(조회하는 즉시 시스템이 '확인 완료' 상태로 세팅하므로, 두 번 연속 치면 0건으로 나옵니다)*
