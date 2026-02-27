@@ -353,11 +353,7 @@ class LottoScraper:
         
         # Playwright의 request를 이용하여 브라우저 쿠키가 실린 채로 API 호출
         end_dt = datetime.now()
-        import timedelta
-        try:
-            from datetime import timedelta
-        except ImportError:
-            pass
+        from datetime import timedelta
             
         start_dt = end_dt - timedelta(days=30) # 최근 1달 조회
         
