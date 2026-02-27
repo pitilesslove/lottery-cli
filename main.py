@@ -205,6 +205,37 @@ def check_pending():
     click.echo("")
 
 @cli.command()
+def pending():
+    """추첨 전(미확인) 티켓과 번호를 출력합니다."""
+    from src.db import get_pending_tickets
+
+    tickets = get_pending_tickets()
+    if not tickets:
+        click.echo("\n[알림] 추첨 전(미확인) 티켓이 없습니다.\n")
+        return
+
+    click.echo("\n[추첨 전 티켓 목록]")
+    click.echo("==================================================")
+
+    rows = []
+    for t in tickets:
+        numbers = t['numbers']
+        if numbers == "확인필요":
+            numbers = "(번호 미저장)"
+        rows.append([
+            t['id'],
+            t['round_number'],
+            t['purchase_date'],
+            t['mode'],
+            numbers,
+            f"{t['cost']:,}원"
+        ])
+
+    click.echo(tabulate(rows, headers=["ID", "회차", "구매일시", "모드", "번호", "금액"], tablefmt="pretty"))
+    click.echo("")
+
+
+@cli.command()
 def stats():
     """로컬 DB에 저장된 내 생애 전체 역대 당첨 내역 누적 통계를 출력합니다."""
     from src.db import get_all_checked_results

@@ -121,6 +121,27 @@ def get_pending_purchases(round_number: int):
     
     return [dict(r) for r in rows]
 
+
+def get_pending_tickets():
+    """
+    추첨 전(미확인) 티켓 전체 목록을 반환합니다.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute('''
+    SELECT id, round_number, purchase_date, mode, numbers, cost
+    FROM purchases
+    WHERE win_rank = '추첨 전'
+    ORDER BY purchase_date DESC, id DESC
+    ''')
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(r) for r in rows]
+
 def get_unchecked_results():
     """
     Returns results that have been drawn but not yet checked by the user.
