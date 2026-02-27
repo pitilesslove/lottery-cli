@@ -86,6 +86,41 @@ def update_winning_result(round_number: int, numbers: str, win_amount: int, win_
     conn.commit()
     conn.close()
 
+def update_ticket_result(purchase_id: int, win_rank: str, win_amount: int):
+    """
+    고유한 티켓 ID를 기반으로 당첨 결과 및 등수를 정밀하게 업데이트합니다.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    UPDATE purchases
+    SET win_amount = ?, win_rank = ?
+    WHERE id = ?
+    ''', (win_amount, win_rank, purchase_id))
+    
+    conn.commit()
+    conn.close()
+
+def get_pending_purchases(round_number: int):
+    """
+    특정 회차 중 아직 채점되지 않은('추첨 전') 티켓 목록을 반환합니다.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    SELECT id, numbers, cost, mode
+    FROM purchases
+    WHERE round_number = ? AND win_rank = '추첨 전'
+    ''', (round_number,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(r) for r in rows]
+
 def get_unchecked_results():
     """
     Returns results that have been drawn but not yet checked by the user.
@@ -97,10 +132,12 @@ def get_unchecked_results():
     
     # Find records where round is drawn, user hasn't checked, and outcome is calculated (not '추첨 전')
     cursor.execute('''
-    SELECT p.id, p.win_rank, p.win_amount, p.cost
+    SELECT p.id, p.win_rank, p.win_amount, p.cost, p.numbers, p.round_number, 
+           r.winning_numbers, r.bonus_number, r.draw_date
     FROM purchases p
     JOIN rounds r ON p.round_number = r.round_number
     WHERE r.is_drawn = 1 AND p.is_user_checked = 0 AND p.win_rank != '추첨 전'
+    ORDER BY p.round_number DESC, p.id ASC
     ''')
     
     rows = cursor.fetchall()
@@ -112,10 +149,30 @@ def get_unchecked_results():
     rank_counts = {}
     ids_to_update = []
     
+    # Store detailed tickets grouped by round
+    rounds_data = {}
+    
     for row in rows:
         ids_to_update.append(row['id'])
         rank = row['win_rank']
         rank_counts[rank] = rank_counts.get(rank, 0) + 1
+        
+        rnd = row['round_number']
+        if rnd not in rounds_data:
+            rounds_data[rnd] = {
+                "draw_date": row['draw_date'],
+                "winning_numbers": row['winning_numbers'],
+                "bonus_number": row['bonus_number'],
+                "tickets": []
+            }
+        
+        rounds_data[rnd]["tickets"].append({
+            "id": row['id'],
+            "numbers": row['numbers'],
+            "win_rank": row['win_rank'],
+            "win_amount": row['win_amount'],
+            "cost": row['cost']
+        })
         
     # Mark as checked
     if ids_to_update:
@@ -133,7 +190,8 @@ def get_unchecked_results():
         "total_games": total_games,
         "total_cost": total_cost,
         "total_win": total_win,
-        "rank_counts": rank_counts
+        "rank_counts": rank_counts,
+        "rounds_data": rounds_data
     }
 
 def get_all_checked_results():
